@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>tvidea</title>
+<meta name="description" content="A TV channel for gaming videos — endless autoplay, minimal chrome." />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ============================= SETUP SCREEN ============================= -->
+<!-- Shown when no API key is stored yet. -->
+<section id="setup-screen" class="screen">
+  <div class="card">
+    <h1 class="wordmark">tvidea</h1>
+    <p class="tagline">A TV channel for gaming videos, playing quietly in the background.</p>
+
+    <ol class="steps">
+      <li>
+        Open
+        <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">
+          console.cloud.google.com → YouTube Data API v3
+        </a>
+        and create (or pick) a project.
+      </li>
+      <li>Click <strong>Enable</strong> to turn the YouTube Data API v3 on for that project.</li>
+      <li>Open <strong>Credentials</strong> in the sidebar, then <strong>Create Credentials → API key</strong>.</li>
+      <li>Copy the key it gives you and paste it below.</li>
+    </ol>
+
+    <form id="setup-form" novalidate>
+      <label for="setup-api-key" class="field-label">YouTube Data API v3 key</label>
+      <input
+        id="setup-api-key"
+        name="apiKey"
+        type="password"
+        inputmode="text"
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        placeholder="AIza…"
+        required
+      />
+      <button type="submit" id="setup-start" class="btn btn-primary">Start watching</button>
+    </form>
+
+    <p class="fine-print">Your key is stored only in this browser and is only ever sent to Google.</p>
+    <p id="setup-error" class="setup-error" role="alert" hidden></p>
+  </div>
+</section>
+
+<!-- ============================= STANDBY SCREEN ============================= -->
+<!-- "Power on" screen -- browsers block unmuted autoplay without a user gesture. -->
+<section id="standby-screen" class="screen" hidden>
+  <div class="standby-inner">
+    <h1 class="wordmark">tvidea</h1>
+    <button id="power-button" class="power-button" aria-label="Power on">
+      <svg viewBox="0 0 24 24" width="40" height="40" aria-hidden="true">
+        <path d="M12 2v9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        <path d="M6.3 5.7a8 8 0 1 0 11.4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    </button>
+    <p class="standby-caption">Press play — 4 channels, nothing over <span id="standby-max-minutes">15</span> minutes.</p>
+    <button id="standby-settings" class="link-button" aria-label="Open settings" type="button">Settings</button>
+  </div>
+</section>
+
+<!-- ============================= TV SCREEN ============================= -->
+<section id="tv-screen" class="screen" hidden>
+  <div class="video-wrap" aria-hidden="true">
+    <div id="player"></div>
+  </div>
+
+  <div id="tuning-indicator" class="tuning-indicator" hidden>
+    <span class="tuning-dot"></span> TUNING&hellip;
+  </div>
+
+  <div id="chrome" class="chrome">
+    <div class="now-playing" aria-live="polite">
+      <span id="np-channel-pill" class="channel-pill">RETRO</span>
+      <h2 id="np-title" class="np-title">&nbsp;</h2>
+      <p id="np-meta" class="np-meta"></p>
+    </div>
+
+    <div id="channel-bar" class="channel-bar" role="tablist" aria-label="Channels">
+      <!-- channel buttons injected by ui.js -->
+    </div>
+
+    <div id="controls" class="controls" role="toolbar" aria-label="Playback controls">
+      <button id="btn-play-pause" class="ctrl-btn" type="button" aria-label="Pause">
+        <svg class="icon-pause" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" />
+          <rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" />
+        </svg>
+        <svg class="icon-play" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" hidden>
+          <path d="M7 4.5v15l13-7.5z" fill="currentColor" />
+        </svg>
+      </button>
+
+      <button id="btn-next" class="ctrl-btn" type="button" aria-label="Next video">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6 5v14l11-7z" fill="currentColor" />
+          <rect x="18" y="5" width="2.5" height="14" fill="currentColor" />
+        </svg>
+      </button>
+
+      <button id="btn-mute" class="ctrl-btn" type="button" aria-label="Mute">
+        <svg class="icon-unmuted" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M4 9v6h4l5 5V4L8 9H4z" fill="currentColor" />
+          <path d="M16.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          <path d="M19 6a9 9 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        <svg class="icon-muted" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" hidden>
+          <path d="M4 9v6h4l5 5V4L8 9H4z" fill="currentColor" />
+          <path d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+      </button>
+
+      <input
+        id="volume-slider"
+        class="volume-slider"
+        type="range"
+        min="0"
+        max="100"
+        step="1"
+        value="70"
+        aria-label="Volume"
+      />
+
+      <button id="btn-fullscreen" class="ctrl-btn" type="button" aria-label="Fullscreen">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path
+            d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+
+      <button id="btn-settings" class="ctrl-btn" type="button" aria-label="Settings">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2" />
+          <path
+            d="M19.4 13a7.4 7.4 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-1.7-1L15 3h-4l-.3 2.6a7.6 7.6 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.4 7.4 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.6 7.6 0 0 0 1.7 1L11 21h4l.3-2.6a7.6 7.6 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6z"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="error-toast" class="error-toast" hidden role="alert">
+    <p id="error-message" class="error-message"></p>
+    <p id="error-submessage" class="error-submessage" hidden></p>
+    <div class="error-actions">
+      <button id="error-action-button" class="btn btn-small" type="button" hidden></button>
+      <button id="error-dismiss" class="btn btn-small btn-ghost" type="button" aria-label="Dismiss">Dismiss</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= SETTINGS MODAL ============================= -->
+<div id="settings-backdrop" class="modal-backdrop" hidden></div>
+<div id="settings-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
+  <div class="modal-head">
+    <h2 id="settings-title">Settings</h2>
+    <button id="settings-close" class="modal-close" type="button" aria-label="Close settings">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    </button>
+  </div>
+
+  <section class="settings-section">
+    <h3>Max video length</h3>
+    <div id="max-minutes-group" class="segmented" role="radiogroup" aria-label="Max video length">
+      <!-- option buttons injected by ui.js -->
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <h3>API key</h3>
+    <input
+      id="settings-api-key"
+      type="password"
+      autocomplete="off"
+      autocapitalize="off"
+      spellcheck="false"
+      placeholder="AIza…"
+    />
+    <div class="settings-key-actions">
+      <button id="settings-replace-key" class="btn btn-small" type="button">Replace key</button>
+      <button id="settings-clear-key" class="btn btn-small btn-ghost" type="button">Clear key</button>
+    </div>
+    <p class="fine-print">Stored only in this browser. Only ever sent to Google.</p>
+  </section>
+
+  <section class="settings-section">
+    <h3>Keyboard shortcuts</h3>
+    <table class="shortcuts-table">
+      <tbody>
+        <tr><td><kbd>Space</kbd></td><td>Play / pause</td></tr>
+        <tr><td><kbd>N</kbd></td><td>Next video</td></tr>
+        <tr><td><kbd>&larr;</kbd> / <kbd>&rarr;</kbd></td><td>Previous / next channel</td></tr>
+        <tr><td><kbd>&uarr;</kbd> / <kbd>&darr;</kbd></td><td>Volume up / down</td></tr>
+        <tr><td><kbd>M</kbd></td><td>Mute</td></tr>
+        <tr><td><kbd>F</kbd></td><td>Fullscreen</td></tr>
+        <tr><td><kbd>S</kbd></td><td>Settings</td></tr>
+        <tr><td><kbd>?</kbd></td><td>Shortcuts help (this)</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close this dialog</td></tr>
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

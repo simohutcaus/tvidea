@@ -2,7 +2,7 @@
 
 A TV channel for gaming videos. Point it at a browser tab and leave it running
 in the background: it endlessly autoplays gaming videos capped at a length
-you choose (15 minutes by default, adjustable), across four curated
+you choose (30 minutes by default; 5/10/15/20/30 available), across four curated
 channels, with a minimal on-screen TV UI so you can glance over and flick to
 something interesting.
 
@@ -99,6 +99,12 @@ Shortcuts are ignored while a text field is focused.
   - **A three-minute floor, and the "short" duration bucket is never
     requested.** Sub-four-minute gaming results are dominated by Shorts-style
     filler, and a new video every 70 seconds is churn, not background noise.
+
+  Above a 20-minute cap the search mixes YouTube's "medium" (4-20 min) and
+  "long" (20+ min) buckets roughly 2:1 rather than asking for "any". Measured
+  live, "any" discards ~60% of what it fetches (hour-long playthroughs), while
+  "medium" alone never reaches past 20 minutes and leaves the extra headroom
+  unused. The mix lands at ~64% usable with a real spread across the range.
 
   If a channel's mix feels wrong after living with it, the query pools in
   `src/config.js` are plain strings — that's the first place to tune.

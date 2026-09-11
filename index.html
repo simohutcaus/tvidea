@@ -61,7 +61,7 @@
         <path d="M6.3 5.7a8 8 0 1 0 11.4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
       </svg>
     </button>
-    <p class="standby-caption">Press play — 4 channels, nothing over <span id="standby-max-minutes">30</span> minutes.</p>
+    <p class="standby-caption">Press play — nothing over <span id="standby-max-minutes">30</span> minutes.</p>
     <button id="standby-settings" class="link-button" aria-label="Open settings" type="button">Settings</button>
   </div>
 </section>
@@ -78,13 +78,8 @@
 
   <div id="chrome" class="chrome">
     <div class="now-playing" aria-live="polite">
-      <span id="np-channel-pill" class="channel-pill">RETRO</span>
       <h2 id="np-title" class="np-title">&nbsp;</h2>
       <p id="np-meta" class="np-meta"></p>
-    </div>
-
-    <div id="channel-bar" class="channel-bar" role="tablist" aria-label="Channels">
-      <!-- channel buttons injected by ui.js -->
     </div>
 
     <div id="controls" class="controls" role="toolbar" aria-label="Playback controls">
@@ -207,8 +202,7 @@
     <table class="shortcuts-table">
       <tbody>
         <tr><td><kbd>Space</kbd></td><td>Play / pause</td></tr>
-        <tr><td><kbd>N</kbd></td><td>Next video</td></tr>
-        <tr><td><kbd>&larr;</kbd> / <kbd>&rarr;</kbd></td><td>Previous / next channel</td></tr>
+        <tr><td><kbd>N</kbd> / <kbd>&rarr;</kbd></td><td>Next video</td></tr>
         <tr><td><kbd>&uarr;</kbd> / <kbd>&darr;</kbd></td><td>Volume up / down</td></tr>
         <tr><td><kbd>M</kbd></td><td>Mute</td></tr>
         <tr><td><kbd>F</kbd></td><td>Fullscreen</td></tr>

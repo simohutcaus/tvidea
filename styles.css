@@ -351,7 +351,7 @@ button {
 .now-playing {
   position: fixed;
   left: 24px;
-  bottom: 108px;
+  bottom: 80px;
   max-width: min(640px, calc(100vw - 48px));
   transform: translateY(0);
   opacity: 1;
@@ -361,19 +361,6 @@ button {
 .now-playing.hidden-card {
   opacity: 0;
   transform: translateY(10px);
-}
-
-.channel-pill {
-  display: inline-block;
-  background: var(--accent);
-  color: var(--accent-fg);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 3px 10px;
-  border-radius: 999px;
-  margin-bottom: 8px;
 }
 
 .np-title {
@@ -394,63 +381,6 @@ button {
   font-size: 0.82rem;
   color: var(--fg-dim);
   text-shadow: var(--shadow-text);
-}
-
-.channel-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 56px;
-  display: flex;
-  gap: 8px;
-  padding: 0 24px;
-  overflow-x: auto;
-  pointer-events: auto;
-  scrollbar-width: thin;
-}
-
-.channel-btn {
-  flex: 0 0 auto;
-  background: rgba(19, 21, 25, 0.72);
-  border: 1px solid var(--border);
-  color: var(--fg-dim);
-  border-radius: var(--radius);
-  padding: 8px 14px;
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 200ms var(--ease), background 200ms var(--ease), color 200ms var(--ease);
-  backdrop-filter: blur(6px);
-}
-
-.channel-btn:hover {
-  border-color: var(--fg-faint);
-  color: var(--fg);
-}
-
-.channel-btn.active {
-  border-color: var(--accent);
-  color: var(--fg);
-  background: rgba(255, 179, 64, 0.12);
-}
-
-.channel-btn .cb-name {
-  display: block;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.channel-btn .cb-tagline {
-  display: block;
-  font-size: 0.68rem;
-  color: var(--fg-faint);
-  margin-top: 2px;
-  white-space: nowrap;
-}
-
-.channel-btn.active .cb-tagline {
-  color: var(--fg-dim);
 }
 
 .controls {
@@ -681,7 +611,7 @@ kbd {
 @media (max-width: 640px) {
   .now-playing {
     left: 16px;
-    bottom: 96px;
+    bottom: 72px;
   }
 
   .controls {
@@ -692,18 +622,9 @@ kbd {
   .volume-slider {
     width: 60px;
   }
-
-  .channel-bar {
-    padding: 0 12px;
-    bottom: 52px;
-  }
 }
 
 @media (max-width: 480px) {
-  .channel-btn .cb-tagline {
-    display: none;
-  }
-
   .np-title {
     font-size: 1.1rem;
   }

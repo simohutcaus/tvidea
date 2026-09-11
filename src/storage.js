@@ -10,7 +10,6 @@ const KEY_API_KEY = PREFIX + "apiKey";
 const KEY_MAX_MINUTES = PREFIX + "maxMinutes";
 const KEY_VOLUME = PREFIX + "volume";
 const KEY_MUTED = PREFIX + "muted";
-const KEY_LAST_CHANNEL = PREFIX + "lastChannel";
 const CACHE_PREFIX = PREFIX + "cache.";
 
 // In-memory fallback store, used when localStorage throws or is unavailable.
@@ -119,21 +118,6 @@ export function getMuted() {
 export function setMuted(b) {
   try {
     rawSet(KEY_MUTED, b ? "1" : "0");
-  } catch {
-    // ignore
-  }
-}
-
-// ---- Last channel -----------------------------------------------------
-
-export function getLastChannel() {
-  return rawGet(KEY_LAST_CHANNEL);
-}
-
-export function setLastChannel(id) {
-  if (!id) return;
-  try {
-    rawSet(KEY_LAST_CHANNEL, id);
   } catch {
     // ignore
   }

@@ -2,7 +2,7 @@
 // DOM plumbing: element lookups, screen switching, overlay rendering and
 // small UI behaviours (idle fade, lower-third timing, modal open/close).
 // Holds no app state beyond what's needed to drive the DOM -- main.js owns
-// the actual playback/channel state and calls into here to reflect it.
+// the actual playback state and calls into here to reflect it.
 
 const el = {};
 
@@ -30,11 +30,8 @@ export function cacheElements() {
   el.chrome = q("chrome");
 
   el.nowPlaying = document.querySelector("#chrome .now-playing");
-  el.npChannelPill = q("np-channel-pill");
   el.npTitle = q("np-title");
   el.npMeta = q("np-meta");
-
-  el.channelBar = q("channel-bar");
 
   el.btnPlayPause = q("btn-play-pause");
   el.btnNext = q("btn-next");
@@ -70,43 +67,6 @@ export function showScreen(name) {
   el.tvScreen.hidden = name !== "tv";
 }
 
-// ---- Channel bar ----------------------------------------------------------
-
-export function renderChannelBar(channels, activeId, onSelect) {
-  el.channelBar.innerHTML = "";
-  for (const ch of channels) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "channel-btn" + (ch.id === activeId ? " active" : "");
-    btn.dataset.channelId = ch.id;
-    btn.setAttribute("role", "tab");
-    btn.setAttribute("aria-selected", ch.id === activeId ? "true" : "false");
-    btn.setAttribute("aria-label", `${ch.name} — ${ch.tagline}`);
-
-    const nameEl = document.createElement("span");
-    nameEl.className = "cb-name";
-    nameEl.textContent = ch.name;
-
-    const taglineEl = document.createElement("span");
-    taglineEl.className = "cb-tagline";
-    taglineEl.textContent = ch.tagline;
-
-    btn.appendChild(nameEl);
-    btn.appendChild(taglineEl);
-    btn.addEventListener("click", () => onSelect(ch.id));
-    el.channelBar.appendChild(btn);
-  }
-}
-
-export function setActiveChannel(activeId) {
-  const buttons = el.channelBar.querySelectorAll(".channel-btn");
-  buttons.forEach((btn) => {
-    const isActive = btn.dataset.channelId === activeId;
-    btn.classList.toggle("active", isActive);
-    btn.setAttribute("aria-selected", isActive ? "true" : "false");
-  });
-}
-
 // ---- Now playing / lower third -------------------------------------------
 
 function formatDuration(seconds) {
@@ -116,11 +76,26 @@ function formatDuration(seconds) {
   return `${m}:${String(rem).padStart(2, "0")}`;
 }
 
-export function updateNowPlaying(channel, video) {
-  el.npChannelPill.textContent = channel.name;
+// Compact subscriber counts: 1.4M, 812K, 4.2K -- one decimal place, dropped
+// when it would be ".0" (2M, not 2.0M). Plain numbers stay plain below 1000.
+function formatSubscribers(n) {
+  const abs = Math.abs(n);
+  const trim = (v) => {
+    const s = v.toFixed(1);
+    return s.endsWith(".0") ? s.slice(0, -2) : s;
+  };
+  if (abs >= 1_000_000) return `${trim(n / 1_000_000)}M`;
+  if (abs >= 1_000) return `${trim(n / 1_000)}K`;
+  return String(n);
+}
+
+export function updateNowPlaying(video) {
   el.npTitle.textContent = video.title;
   const parts = [];
   if (video.channelTitle) parts.push(video.channelTitle);
+  if (typeof video.subscribers === "number") {
+    parts.push(`${formatSubscribers(video.subscribers)} subscribers`);
+  }
   parts.push(formatDuration(video.durationSeconds));
   el.npMeta.textContent = parts.join(" · ");
 }

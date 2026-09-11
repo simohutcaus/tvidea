@@ -7,6 +7,8 @@ import { cacheGet, cacheSet, getApiKey } from "./storage.js";
 
 const SEARCH_URL = "https://www.googleapis.com/youtube/v3/search";
 const VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos";
+const GAMING_CATEGORY_ID = "20";
+const MIN_DURATION_SECONDS = 180;
 
 export class ApiError extends Error {
   constructor(kind, message) {
@@ -31,17 +33,13 @@ function parseISODuration(iso) {
 
 // videoDuration semantics (YouTube API): "short" = under 4 min,
 // "medium" = 4-20 min, "long" = over 20 min, "any" = no filter.
-// We pick a bucket from the *allowed set* for the requested cap, at random,
-// so short clips stay mixed into the rotation even for longer caps -- and
-// fold that bucket into the cache key since it changes the result set.
+// The "short" bucket is deliberately never requested: it is where Shorts-style
+// filler lives, and a new video every 70 seconds is churn rather than
+// background noise. "medium" is the sweet spot for half-listening.
 function pickDurationBucket(maxMinutes) {
-  let base;
-  if (maxMinutes <= 4) base = "short";
-  else if (maxMinutes <= 20) base = "medium";
-  else base = "any";
-
-  const allowed = maxMinutes > 4 ? [base, "short"] : [base];
-  return allowed[Math.floor(Math.random() * allowed.length)];
+  if (maxMinutes <= 4) return "short";
+  if (maxMinutes <= 20) return "medium";
+  return "any";
 }
 
 const SEARCH_ORDERS = ["relevance", "viewCount", "date"];
@@ -126,6 +124,10 @@ export async function fetchVideos(query, maxMinutes, { signal } = {}) {
       order,
       relevanceLanguage: "en",
       safeSearch: "none",
+      // Category 20 = Gaming. Without it "game"/"highlights" queries drift
+      // into football highlights, editing tutorials and gaming-drama
+      // commentary. Costs almost no yield and cuts the off-topic results.
+      videoCategoryId: GAMING_CATEGORY_ID,
       key: apiKey,
     });
     if (durationBucket !== "any") params.set("videoDuration", durationBucket);
@@ -154,6 +156,10 @@ export async function fetchVideos(query, maxMinutes, { signal } = {}) {
     cacheSet(videosCacheKey, videoItems);
   }
 
+  // Anything under ~3 min is clip-churn for a channel meant to run unattended.
+  // Only honour that floor when the cap leaves room for it.
+  const minSeconds = maxMinutes > 4 ? MIN_DURATION_SECONDS : 60;
+
   const results = [];
   for (const item of videoItems) {
     const status = item.status || {};
@@ -162,10 +168,14 @@ export async function fetchVideos(query, maxMinutes, { signal } = {}) {
     if (status.privacyStatus !== "public") continue;
     if (!(durationSeconds > 0)) continue;
     if (durationSeconds > maxMinutes * 60) continue;
-    if (durationSeconds < 60) continue; // skip sub-minute shorts -- bad background TV
+    if (durationSeconds < minSeconds) continue;
+    const title = (item.snippet && item.snippet.title) || "Untitled";
+    // Shorts land at exactly 1:00 and clear the floor above; the tag is the
+    // only reliable marker the API exposes.
+    if (/#shorts?\b/i.test(title)) continue;
     results.push({
       id: item.id,
-      title: (item.snippet && item.snippet.title) || "Untitled",
+      title,
       channelTitle: (item.snippet && item.snippet.channelTitle) || "",
       durationSeconds,
     });

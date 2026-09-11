@@ -85,10 +85,23 @@ Shortcuts are ignored while a text field is focused.
   try/catch-guarded so a browser with storage disabled just falls back to
   in-memory defaults instead of crashing.
 - **`src/api.js`** — talks to the YouTube Data API: a `search.list` call per
-  query (randomized `order` and duration bucket, both cached), followed by a
-  `videos.list` call to fetch exact durations and confirm the video is
-  public and embeddable. Only videos that fit your max-length cap and are at
-  least a minute long make it through.
+  query (randomized `order`, cached), followed by a `videos.list` call to
+  fetch exact durations and confirm the video is public and embeddable. Only
+  videos that fit your max-length cap make it through.
+
+  Two filters exist purely for content quality, both arrived at by running
+  the real API and reading what came back:
+
+  - **Gaming category only** (`videoCategoryId=20`). Without it, searches
+    drift badly — "gaming highlights clips" returns football highlights,
+    "video game review" returns gaming-drama commentary, "game development"
+    returns generic coding tutorials. It costs almost no yield.
+  - **A three-minute floor, and the "short" duration bucket is never
+    requested.** Sub-four-minute gaming results are dominated by Shorts-style
+    filler, and a new video every 70 seconds is churn, not background noise.
+
+  If a channel's mix feels wrong after living with it, the query pools in
+  `src/config.js` are plain strings — that's the first place to tune.
 - **`src/queue.js`** — a per-channel playlist buffer. It refills in the
   background as it gets low, cycles through the channel's query pool so
   every query gets used before repeating, and tracks which videos have

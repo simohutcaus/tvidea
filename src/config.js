@@ -30,14 +30,14 @@ export const CHANNELS = [
       "speedrun world record",
       "GDQ speedrun highlight",
       "any% speedrun explained",
-      "gaming highlights clips",
+      "speedrun commentary",
       "esports best plays",
-      "insane gaming moments",
+      "speedrun history",
       "EVO moment fighting game",
       "tool assisted speedrun",
       "speedrun glitch showcase",
       "how speedrunners break games",
-      "fastest completion record"
+      "world record progression"
     ]
   },
   {

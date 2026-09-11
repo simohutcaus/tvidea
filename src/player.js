@@ -47,7 +47,7 @@ export function loadPlayerApi() {
 
 // Fatal embed error codes: 2=invalid param, 5=HTML5 error, 100=not found,
 // 101/150=embedding disallowed by the video owner. A blocked embed must
-// never stall the channel, so all of these trigger onError -> skip.
+// never stall the feed, so all of these trigger onError -> skip.
 const FATAL_ERROR_CODES = new Set([2, 5, 100, 101, 150]);
 const WATCHDOG_MS = 12000;
 
@@ -147,7 +147,7 @@ export class TvPlayer {
 
   // If a video is loaded but playback never reaches PLAYING within 12s
   // (region lock, silent failure, slow network), treat it as an error so
-  // the channel skips instead of sitting frozen.
+  // the feed skips instead of sitting frozen.
   _armWatchdog() {
     this._clearWatchdog();
     this._watchdogTimer = setTimeout(() => {

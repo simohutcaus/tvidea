@@ -1,7 +1,7 @@
 // src/main.js
 // Wires config/storage/api/queue/player together behind the ui.js DOM layer.
 
-import { CHANNELS, DEFAULT_MAX_MINUTES, MAX_MINUTES_OPTIONS } from "./config.js";
+import { FEED_QUERIES, DEFAULT_MAX_MINUTES, MAX_MINUTES_OPTIONS } from "./config.js";
 import * as storage from "./storage.js";
 import { Queue } from "./queue.js";
 import { TvPlayer } from "./player.js";
@@ -11,7 +11,6 @@ const MAX_CONSECUTIVE_FAILURES = 5;
 
 const state = {
   screen: "setup", // "setup" | "standby" | "tv"
-  currentChannelId: null,
   maxMinutes: DEFAULT_MAX_MINUTES,
   volume: 70,
   muted: false,
@@ -19,19 +18,8 @@ const state = {
   currentVideo: null,
 };
 
-const queues = new Map(); // channelId -> Queue, so switching back keeps its buffer
+const queue = new Queue(FEED_QUERIES);
 let player = null;
-
-function getChannel(id) {
-  return CHANNELS.find((c) => c.id === id) || CHANNELS[0];
-}
-
-function getQueue(channelId) {
-  if (!queues.has(channelId)) {
-    queues.set(channelId, new Queue(getChannel(channelId)));
-  }
-  return queues.get(channelId);
-}
 
 function presentApiError(err) {
   const kind = err && err.kind;
@@ -58,8 +46,6 @@ function presentApiError(err) {
 
 async function playNext() {
   if (state.screen !== "tv" || !player) return;
-  const channel = getChannel(state.currentChannelId);
-  const queue = getQueue(channel.id);
 
   ui.setTuning(true);
   try {
@@ -68,7 +54,7 @@ async function playNext() {
     state.consecutiveFailures = 0;
     state.currentVideo = video;
     player.play(video.id);
-    ui.updateNowPlaying(channel, video);
+    ui.updateNowPlaying(video);
     ui.pulseLowerThird();
     ui.setPlayPauseIcon(true);
     queue.prefetch(state.maxMinutes);
@@ -91,28 +77,11 @@ function handlePlaybackFailure(code) {
   state.consecutiveFailures += 1;
   if (state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
     ui.showError("Several videos in a row failed to play.", {
-      submessage: "Pick a channel or press Next to keep going.",
+      submessage: "Press Next to keep going.",
     });
     return;
   }
   playNext().catch(() => {});
-}
-
-function switchChannel(channelId) {
-  if (!CHANNELS.some((c) => c.id === channelId)) return;
-  if (channelId === state.currentChannelId) return;
-  state.currentChannelId = channelId;
-  state.consecutiveFailures = 0;
-  storage.setLastChannel(channelId);
-  ui.setActiveChannel(channelId);
-  playNext().catch(() => {});
-}
-
-function adjacentChannelId(delta) {
-  const ids = CHANNELS.map((c) => c.id);
-  const idx = Math.max(0, ids.indexOf(state.currentChannelId));
-  const nextIdx = (idx + delta + ids.length) % ids.length;
-  return ids[nextIdx];
 }
 
 // ---- Controls ------------------------------------------------------------
@@ -185,7 +154,7 @@ function wireSettings() {
     ui.elements.standbyMaxMinutes.textContent = String(n);
     // Takes effect from the next video: drop buffered picks so the next
     // next() call refetches under the new cap.
-    for (const q of queues.values()) q.reset();
+    queue.reset();
   });
 
   ui.elements.settingsClose.addEventListener("click", ui.closeSettings);
@@ -211,7 +180,7 @@ function wireSettings() {
       player.destroy();
       player = null;
     }
-    queues.clear();
+    queue.reset();
     state.screen = "setup";
     ui.showScreen("setup");
   });
@@ -235,15 +204,9 @@ function wireKeyboard() {
         break;
       case "n":
       case "N":
-        playNext();
-        break;
-      case "ArrowLeft":
-        e.preventDefault();
-        switchChannel(adjacentChannelId(-1));
-        break;
       case "ArrowRight":
         e.preventDefault();
-        switchChannel(adjacentChannelId(1));
+        playNext();
         break;
       case "ArrowUp":
         e.preventDefault();
@@ -281,13 +244,10 @@ function goToStandby() {
   ui.showScreen("standby");
 }
 
-async function startChannel(channelId) {
+async function startFeed() {
   state.screen = "tv";
   ui.showScreen("tv");
-  state.currentChannelId = channelId;
   state.consecutiveFailures = 0;
-  storage.setLastChannel(channelId);
-  ui.setActiveChannel(channelId);
 
   if (!player) {
     player = new TvPlayer("player", {
@@ -318,7 +278,6 @@ function init() {
   ui.elements.standbyMaxMinutes.textContent = String(state.maxMinutes);
   ui.setVolumeSlider(state.volume);
   ui.setMuteIcon(state.muted);
-  ui.renderChannelBar(CHANNELS, null, (id) => switchChannel(id));
   ui.initIdleFade();
 
   wireControls();
@@ -335,9 +294,7 @@ function init() {
   });
 
   ui.elements.powerButton.addEventListener("click", () => {
-    const last = storage.getLastChannel();
-    const channelId = CHANNELS.some((c) => c.id === last) ? last : CHANNELS[0].id;
-    startChannel(channelId).catch(() => {
+    startFeed().catch(() => {
       ui.setTuning(false);
     });
   });

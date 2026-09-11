@@ -1,5 +1,5 @@
 // src/queue.js
-// Per-channel video queue: buffers upcoming videos, refills from the API
+// Single-feed video queue: buffers upcoming videos, refills from the API
 // in the background, and avoids repeats for the life of the session.
 
 import { fetchVideos, ApiError } from "./api.js";
@@ -12,6 +12,23 @@ function shuffleInPlace(arr) {
   return arr;
 }
 
+// Weighted sampling without replacement (Efraimidis-Spirakis): give every
+// video a random key raised to 1/weight, then sort descending by key. This is
+// a *weighting*, not a ranking -- a higher-weight (more-subscribed) video has
+// a better expected position, but every video, even weight 1, keeps a real
+// chance at any slot. Sorting by subscriber count directly would surface the
+// same handful of mega-channels every time, which is exactly what we don't
+// want (see config.js for why the weight itself is capped).
+function weightedShuffleInPlace(arr) {
+  for (const v of arr) {
+    const weight = v && typeof v.weight === "number" && v.weight > 0 ? v.weight : 1;
+    v._sortKey = Math.random() ** (1 / weight);
+  }
+  arr.sort((a, b) => b._sortKey - a._sortKey);
+  for (const v of arr) delete v._sortKey;
+  return arr;
+}
+
 const REFILL_THRESHOLD = 3;
 const MAX_QUERY_ATTEMPTS = 4; // 1 initial + up to 3 more
 
@@ -20,8 +37,8 @@ const MAX_QUERY_ATTEMPTS = 4; // 1 initial + up to 3 more
 const FATAL_ERROR_KINDS = new Set(["no-key", "bad-key", "quota"]);
 
 export class Queue {
-  constructor(channel) {
-    this.channel = channel;
+  constructor(queries) {
+    this.queries = queries;
     this.buffer = [];
     this.seen = new Set(); // session-only, no persistence
     this._shuffledQueries = null;
@@ -29,11 +46,11 @@ export class Queue {
     this._refillPromise = null;
   }
 
-  // Cycles through a shuffled copy of the channel's query pool so every
-  // query gets used before any repeats.
+  // Cycles through a shuffled copy of the query pool so every query gets
+  // used before any repeats.
   _nextQuery() {
     if (!this._shuffledQueries || this._queryIndex >= this._shuffledQueries.length) {
-      this._shuffledQueries = shuffleInPlace([...this.channel.queries]);
+      this._shuffledQueries = shuffleInPlace([...this.queries]);
       this._queryIndex = 0;
     }
     return this._shuffledQueries[this._queryIndex++];
@@ -60,7 +77,7 @@ export class Queue {
         (v) => !this.seen.has(v.id) && !this.buffer.some((b) => b.id === v.id)
       );
       if (fresh.length > 0) {
-        shuffleInPlace(fresh);
+        weightedShuffleInPlace(fresh);
         this.buffer.push(...fresh);
         return;
       }
@@ -78,7 +95,7 @@ export class Queue {
         const videos = await fetchVideos(query, maxMinutes);
         const fresh = videos.filter((v) => !this.buffer.some((b) => b.id === v.id));
         if (fresh.length > 0) {
-          shuffleInPlace(fresh);
+          weightedShuffleInPlace(fresh);
           this.buffer.push(...fresh);
           return;
         }
@@ -87,7 +104,7 @@ export class Queue {
       }
     }
 
-    throw lastError || new ApiError("unknown", "No playable videos found for this channel right now.");
+    throw lastError || new ApiError("unknown", "No playable videos found right now.");
   }
 
   // Guards against concurrent refills -- callers share the same in-flight
@@ -108,7 +125,7 @@ export class Queue {
     }
 
     if (this.buffer.length === 0) {
-      throw new ApiError("unknown", "No playable videos found for this channel right now.");
+      throw new ApiError("unknown", "No playable videos found right now.");
     }
 
     const video = this.buffer.shift();

@@ -76,6 +76,6 @@ export const CHANNELS = [
   }
 ];
 
-export const DEFAULT_MAX_MINUTES = 15;
+export const DEFAULT_MAX_MINUTES = 30;
 export const MAX_MINUTES_OPTIONS = [5, 10, 15, 20, 30];
 export const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h -- search.list costs 100 quota units

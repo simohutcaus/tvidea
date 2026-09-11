@@ -9,6 +9,7 @@ const SEARCH_URL = "https://www.googleapis.com/youtube/v3/search";
 const VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos";
 const GAMING_CATEGORY_ID = "20";
 const MIN_DURATION_SECONDS = 180;
+const LONG_BUCKET_SHARE = 1 / 3;
 
 export class ApiError extends Error {
   constructor(kind, message) {
@@ -39,7 +40,12 @@ function parseISODuration(iso) {
 function pickDurationBucket(maxMinutes) {
   if (maxMinutes <= 4) return "short";
   if (maxMinutes <= 20) return "medium";
-  return "any";
+  // Above 20 the obvious choice, "any", is the wrong one: measured against the
+  // live API it discards ~60% of what it fetches (hour-long playthroughs and
+  // podcasts) to surface a handful of in-range videos. "medium" alone yields
+  // everything but never exceeds 20 min, so the extra headroom goes unused.
+  // Mixing them keeps yield high while still reaching into the 20-30 range.
+  return Math.random() < LONG_BUCKET_SHARE ? "long" : "medium";
 }
 
 const SEARCH_ORDERS = ["relevance", "viewCount", "date"];

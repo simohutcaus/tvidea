@@ -73,7 +73,22 @@ configure as a secret on the GitHub side.
 | `?` | Shortcuts help (opens Settings) |
 | `Escape` | Close the open dialog |
 
-Shortcuts are ignored while a text field is focused.
+Shortcuts are ignored while a text field is focused, and while the progress
+bar (below) has focus.
+
+## Progress bar
+
+A thin bar along the very bottom edge of the screen shows how far into the
+current video you are, with a lighter fill showing how much is buffered
+ahead. Click or tap anywhere on it to seek there, or tab to it and use
+`←` / `→` to nudge by 5%, `Home` to jump to the start, or `End` to jump
+near the end.
+
+This app is meant for background listening, so the bar is a deliberate
+exception to the idle fade: the rest of the on-screen controls disappear
+after a few seconds of no input, but the progress bar just shrinks and dims
+instead of disappearing, so a glance at the screen still tells you how much
+is left.
 
 ## How it works
 

@@ -21,6 +21,26 @@ const state = {
 const queue = new Queue(FEED_QUERIES);
 let player = null;
 
+// ---- Progress ticker -------------------------------------------------------
+
+const PROGRESS_TICK_MS = 250;
+let progressTimer = null;
+
+function startProgressTicker() {
+  if (progressTimer) return;
+  progressTimer = setInterval(() => {
+    if (!player) return;
+    ui.setProgress(player.getCurrentTime(), player.getDuration(), player.getLoadedFraction());
+  }, PROGRESS_TICK_MS);
+}
+
+function stopProgressTicker() {
+  if (progressTimer) {
+    clearInterval(progressTimer);
+    progressTimer = null;
+  }
+}
+
 function presentApiError(err) {
   const kind = err && err.kind;
   const message = (err && err.message) || "Something went wrong fetching videos.";
@@ -48,6 +68,7 @@ async function playNext() {
   if (state.screen !== "tv" || !player) return;
 
   ui.setTuning(true);
+  ui.resetProgress();
   try {
     const video = await queue.next(state.maxMinutes);
     ui.setTuning(false);
@@ -144,6 +165,18 @@ function wireControls() {
   ui.elements.btnSettings.addEventListener("click", ui.openSettings);
   ui.elements.standbySettingsBtn.addEventListener("click", ui.openSettings);
   ui.elements.errorDismiss.addEventListener("click", ui.hideError);
+
+  ui.onSeek((fraction) => {
+    if (!player) return;
+    const d = player.getDuration();
+    if (!(d > 0)) return;
+    const target = d * fraction;
+    player.seekTo(target);
+    // seekTo resolves asynchronously and the ticker is stopped while paused,
+    // so paint the new position now rather than leaving the bar showing the
+    // old one until playback resumes.
+    ui.setProgress(target, d, player.getLoadedFraction());
+  });
 }
 
 function wireSettings() {
@@ -180,6 +213,8 @@ function wireSettings() {
       player.destroy();
       player = null;
     }
+    stopProgressTicker();
+    ui.resetProgress();
     queue.reset();
     state.screen = "setup";
     ui.showScreen("setup");
@@ -188,6 +223,10 @@ function wireSettings() {
 
 function wireKeyboard() {
   window.addEventListener("keydown", (e) => {
+    // The progress bar stops propagation for the four keys it handles
+    // (arrows/Home/End), so nothing more is needed here. Bailing on focus
+    // instead would swallow Space, N, M, F and S for as long as the bar
+    // holds focus -- which it does the moment you click it to seek.
     if (ui.isTypingTarget(e.target)) return;
 
     if (e.key === "Escape") {
@@ -258,9 +297,18 @@ async function startFeed() {
       onEnded: () => playNext(),
       onError: (code) => handlePlaybackFailure(code),
       onStateChange: (ytState) => {
-        // 1 = PLAYING, 2 = PAUSED (YT.PlayerState)
-        if (ytState === 1) ui.setPlayPauseIcon(true);
-        if (ytState === 2) ui.setPlayPauseIcon(false);
+        // 0 = ENDED, 1 = PLAYING, 2 = PAUSED (YT.PlayerState)
+        if (ytState === 1) {
+          ui.setPlayPauseIcon(true);
+          startProgressTicker();
+        }
+        if (ytState === 2) {
+          ui.setPlayPauseIcon(false);
+          stopProgressTicker();
+        }
+        if (ytState === 0) {
+          stopProgressTicker();
+        }
       },
     });
   }

@@ -123,6 +123,8 @@
         aria-label="Volume"
       />
 
+      <span id="time-readout" class="time-readout">0:00 / 0:00</span>
+
       <button id="btn-fullscreen" class="ctrl-btn" type="button" aria-label="Fullscreen">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
           <path
@@ -149,6 +151,20 @@
         </svg>
       </button>
     </div>
+  </div>
+
+  <div
+    id="progress-bar"
+    role="slider"
+    tabindex="0"
+    aria-label="Seek"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    aria-valuenow="0"
+    aria-valuetext="0:00 of 0:00"
+  >
+    <div id="progress-buffered"></div>
+    <div id="progress-played"></div>
   </div>
 
   <div id="error-toast" class="error-toast" hidden role="alert">

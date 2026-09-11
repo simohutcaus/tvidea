@@ -37,8 +37,13 @@ export function cacheElements() {
   el.btnNext = q("btn-next");
   el.btnMute = q("btn-mute");
   el.volumeSlider = q("volume-slider");
+  el.timeReadout = q("time-readout");
   el.btnFullscreen = q("btn-fullscreen");
   el.btnSettings = q("btn-settings");
+
+  el.progressBar = q("progress-bar");
+  el.progressBuffered = q("progress-buffered");
+  el.progressPlayed = q("progress-played");
 
   el.errorToast = q("error-toast");
   el.errorMessage = q("error-message");
@@ -154,6 +159,71 @@ export function setMuteIcon(isMuted) {
 
 export function setVolumeSlider(v) {
   el.volumeSlider.value = String(v);
+}
+
+// ---- Progress bar ---------------------------------------------------------
+
+function clamp01(n) {
+  return Math.max(0, Math.min(1, n));
+}
+
+export function setProgress(currentSeconds, durationSeconds, loadedFraction) {
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+    el.progressPlayed.style.width = "0%";
+    el.progressBuffered.style.width = "0%";
+    el.timeReadout.textContent = "0:00 / 0:00";
+    el.progressBar.setAttribute("aria-valuenow", "0");
+    el.progressBar.setAttribute("aria-valuetext", "0:00 of 0:00");
+    return;
+  }
+
+  const playedPct = clamp01(currentSeconds / durationSeconds) * 100;
+  const bufferedPct = clamp01(loadedFraction || 0) * 100;
+
+  el.progressPlayed.style.width = `${playedPct}%`;
+  el.progressBuffered.style.width = `${bufferedPct}%`;
+  el.timeReadout.textContent = `${formatDuration(currentSeconds)} / ${formatDuration(durationSeconds)}`;
+  el.progressBar.setAttribute("aria-valuenow", String(Math.round(playedPct)));
+  el.progressBar.setAttribute(
+    "aria-valuetext",
+    `${formatDuration(currentSeconds)} of ${formatDuration(durationSeconds)}`
+  );
+}
+
+export function resetProgress() {
+  setProgress(0, 0, 0);
+}
+
+export function onSeek(handler) {
+  el.progressBar.addEventListener("click", (e) => {
+    const rect = el.progressBar.getBoundingClientRect();
+    const fraction = clamp01((e.clientX - rect.left) / rect.width);
+    handler(fraction);
+  });
+
+  el.progressBar.addEventListener("keydown", (e) => {
+    let fraction = null;
+    const current = Number(el.progressBar.getAttribute("aria-valuenow")) / 100;
+    switch (e.key) {
+      case "ArrowLeft":
+        fraction = clamp01(current - 0.05);
+        break;
+      case "ArrowRight":
+        fraction = clamp01(current + 0.05);
+        break;
+      case "Home":
+        fraction = 0;
+        break;
+      case "End":
+        fraction = 0.99;
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    handler(fraction);
+  });
 }
 
 // ---- Error toast --------------------------------------------------------

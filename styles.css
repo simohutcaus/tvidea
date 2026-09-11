@@ -327,6 +327,10 @@ button {
   .tuning-dot {
     animation: none;
   }
+
+  #progress-bar {
+    transition: none;
+  }
 }
 
 /* ---- chrome (overlays), idle-fades as a unit ---- */
@@ -426,6 +430,14 @@ button {
   margin: 0 6px;
 }
 
+.time-readout {
+  font-size: 0.78rem;
+  color: var(--fg-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  margin: 0 4px;
+}
+
 /* fade the whole video area behind a bottom scrim so the bar/controls stay
    legible over bright video without needing a solid background */
 .chrome::before {
@@ -438,6 +450,61 @@ button {
   background: linear-gradient(0deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
   pointer-events: none;
   z-index: -1;
+}
+
+/* ---- progress bar -------------------------------------------------------
+   Pinned to the very bottom edge of #tv-screen, below the control cluster.
+   Deliberately NOT part of .chrome's idle fade -- this app is for glancing
+   over during background listening, so it stays visible (just thinner and
+   dimmer) while the rest of the chrome disappears. */
+
+#progress-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  z-index: 15;
+  background: rgba(255, 255, 255, 0.12);
+  opacity: 1;
+  cursor: pointer;
+  transition: height 200ms var(--ease), opacity 200ms var(--ease);
+}
+
+#progress-bar::before {
+  /* larger invisible hit area -- the visual bar stays 3px/6px tall */
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: -8px;
+}
+
+#progress-buffered,
+#progress-played {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0%;
+}
+
+#progress-buffered {
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+#progress-played {
+  z-index: 2;
+  background: var(--accent);
+}
+
+#tv-screen.idle #progress-bar {
+  height: 3px;
+  opacity: 0.45;
+  /* #tv-screen.idle already sets cursor: none on itself, which #progress-bar
+     inherits -- nothing to do here. */
 }
 
 /* ============================= Error toast ============================= */

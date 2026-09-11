@@ -200,6 +200,14 @@ export class TvPlayer {
     return this._ready && this._player.getCurrentTime ? this._player.getCurrentTime() : 0;
   }
 
+  seekTo(seconds) {
+    if (this._ready && this._player.seekTo) this._player.seekTo(seconds, true);
+  }
+
+  getLoadedFraction() {
+    return this._ready && this._player.getVideoLoadedFraction ? this._player.getVideoLoadedFraction() : 0;
+  }
+
   destroy() {
     this._destroyed = true;
     this._clearWatchdog();
